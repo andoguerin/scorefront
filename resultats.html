@@ -17,16 +17,14 @@
   </header>
 
   <main>
-
     <section class="card">
-      <h2>Résultats des matchs</h2>
+      <h2>Résultats – Équipe Première</h2>
       <p>
-        Ci-dessous, la liste de tous les matchs présents dans la base
-        (table <code>match</code> sur MySQL / Aiven).
+        Ci-dessous, la liste de tous les matchs de l'équipe
+        <strong>Première</strong> (table <code>match</code>).
       </p>
-
     </section>
-
+  
     <section class="card">
       <table>
         <thead>
@@ -38,13 +36,37 @@
             <th>Statut</th>
           </tr>
         </thead>
-        <tbody id="matches-body">
+        <tbody id="matches-premiere">
           <!-- Lignes générées en JavaScript -->
         </tbody>
       </table>
     </section>
+  
+    <section class="card">
+      <h2>Résultats – Équipe Réserve</h2>
+      <p>
+        Ci-dessous, la liste de tous les matchs de l'équipe
+        <strong>Réserve</strong>.
+      </p>
+    </section>
+  
+    <section class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Domicile</th>
+            <th>Extérieur</th>
+            <th>Score</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody id="matches-reserve">
+          <!-- Lignes générées en JavaScript -->
+        </tbody>
+      </table>
+    </section>
+  
     <div id="error-message"></div>
   </main>
-  <script src="assets/main.js"></script>
-</body>
-</html>
+  
