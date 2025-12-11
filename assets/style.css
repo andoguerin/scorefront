@@ -121,4 +121,41 @@ body {
     font-weight: bold;
   
   }
+  .form-dots {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 24px;
+  }
+  
+  .form-dot {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: #cccccc;
+  }
+  
+  .form-dot.win {
+    background-color: #388e3c; /* vert */
+  }
+  
+  .form-dot.loss {
+    background-color: #e53935; /* rouge */
+  }
+  
+  .form-dot.draw {
+    background-color: #fbc02d; /* jaune/orange pour nul */
+  }
+  
+  .form-legend {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .form-legend .form-dot {
+    margin-right: 4px;
+  }
   

@@ -6,7 +6,7 @@
 
   <meta charset="UTF-8" />
 
-  <title>ScoreCenter – Accueil</title>
+  <title>Bidart Score – Accueil</title>
 
   <link rel="stylesheet" href="assets/style.css" />
 
@@ -16,7 +16,7 @@
 
   <header>
 
-    <h1>ScoreCenter</h1>
+    <h1>Bidart Score</h1>
 
     <nav>
 
@@ -36,21 +36,23 @@
 
       <p>
 
-        Bienvenue sur ScoreCenter. Ce site présente les résultats de
-
-        notre championnat (à adapter : foot, basket, volley, etc.).
-
-      </p>
-
-      <p>
-
-        Les données affichées proviennent d'une base MySQL en ligne,
-
-        accessible via une API Node.js déployée sur Render.
-
-        test
+        Bienvenue sur ScoreCenter, le tableau de bord du Bidart Union Club,
+    club de rugby évoluant en Régionale 2.
 
       </p>
+    <section class="card">
+        <h2>Forme sur les 5 derniers matchs</h2>
+        <p>Du point de vue du Bidart Union Club :</p>
+        <div id="form-dots" class="form-dots">
+          <p>Chargement de la forme récente...</p>
+        </div>
+        <p class="form-legend">
+          <span class="form-dot win"></span> Victoire
+          <span class="form-dot loss"></span> Défaite
+          <span class="form-dot draw"></span> Match nul
+        </p>
+    </section>
+      
 
     </section>
 
