@@ -1,0 +1,124 @@
+body {
+
+    font-family: Arial, sans-serif;
+  
+    margin: 0;
+  
+    padding: 0;
+  
+    background-color: #f5f5f5;
+  
+  }
+  
+  header {
+  
+    background-color: #1e88e5;
+  
+    color: white;
+  
+    padding: 16px;
+  
+  }
+  
+  header h1 {
+  
+    margin: 0;
+  
+  }
+  
+  nav a {
+  
+    color: white;
+  
+    margin-right: 16px;
+  
+    text-decoration: none;
+  
+    font-weight: bold;
+  
+  }
+  
+  nav a:hover {
+  
+    text-decoration: underline;
+  
+  }
+  
+  main {
+  
+    padding: 16px;
+  
+  }
+  
+  .card {
+  
+    background-color: white;
+  
+    border-radius: 8px;
+  
+    padding: 16px;
+  
+    margin-bottom: 16px;
+  
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  
+  }
+  
+  table {
+  
+    width: 100%;
+  
+    border-collapse: collapse;
+  
+    background-color: white;
+  
+  }
+  
+  th, td {
+  
+    padding: 8px;
+  
+    border: 1px solid #ddd;
+  
+    text-align: left;
+  
+  }
+  
+  th {
+  
+    background-color: #eeeeee;
+  
+  }
+  
+  .status-scheduled {
+  
+    color: #1e88e5;
+  
+    font-weight: bold;
+  
+  }
+  
+  .status-played {
+  
+    color: #388e3c;
+  
+    font-weight: bold;
+  
+  }
+  
+  .status-canceled {
+  
+    color: #e53935;
+  
+    font-weight: bold;
+  
+  }
+  
+  .error {
+  
+    color: #e53935;
+  
+    font-weight: bold;
+  
+  }
+  

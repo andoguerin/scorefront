@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <title>ScoreCenter – Accueil</title>
+
+  <link rel="stylesheet" href="assets/style.css" />
+
+</head>
+
+<body data-page="home">
+
+  <header>
+
+    <h1>ScoreCenter</h1>
+
+    <nav>
+
+      <a href="index.html">Accueil</a>
+
+      <a href="resultats.html">Résultats</a>
+
+    </nav>
+
+  </header>
+
+  <main>
+
+    <section class="card">
+
+      <h2>Présentation</h2>
+
+      <p>
+
+        Bienvenue sur ScoreCenter. Ce site présente les résultats de
+
+        notre championnat (à adapter : foot, basket, volley, etc.).
+
+      </p>
+
+      <p>
+
+        Les données affichées proviennent d'une base MySQL en ligne,
+
+        accessible via une API Node.js déployée sur Render.
+
+      </p>
+
+    </section>
+
+    <section class="card">
+
+      <h2>Prochain match</h2>
+
+      <div id="next-match">
+
+        <p>Chargement du prochain match...</p>
+
+      </div>
+
+    </section>
+
+    <section class="card">
+
+      <h2>Dernier résultat</h2>
+
+      <div id="last-match">
+
+        <p>Chargement du dernier résultat...</p>
+
+      </div>
+
+    </section>
+
+    <div id="error-message"></div>
+
+  </main>
+
+  <script src="assets/main.js"></script>
+
+</body>
+
+</html>
