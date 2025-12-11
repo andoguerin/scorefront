@@ -4,10 +4,6 @@ const API_BASE_URL = "https://apiscore-vv2y.onrender.com";
 // Nom du club tel qu'il apparaît dans la base de données
 const CLUB_NAME = "Bidart";
 
-// Nom exact des valeurs de la colonne Equipe dans la base
-const TEAM_PREMIERE = "Première";
-const TEAM_RESERVE = "Réserve";
-
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.body.dataset.page;
 
@@ -63,19 +59,16 @@ function getClubResult(match) {
   return "draw";
 }
 
-// Affiche les 5 derniers résultats de l'équipe Première sous forme de pastilles
+// Affiche les 5 derniers résultats du club sous forme de pastilles
 function renderClubForm(matches) {
   const container = document.getElementById("form-dots");
   if (!container) return;
 
-  // On garde uniquement les matchs de l'équipe Première avec un résultat connu
-  const clubMatches = matches.filter(
-    (m) => m.team === TEAM_PREMIERE && getClubResult(m) !== null
-  );
+  // On garde uniquement les matchs du club avec un résultat connu
+  const clubMatches = matches.filter((m) => getClubResult(m) !== null);
 
   if (clubMatches.length === 0) {
-    container.textContent =
-      "Pas encore de résultats pour l'équipe Première du Bidart Union Club.";
+    container.textContent = "Pas encore de résultats pour le Bidart Union Club.";
     return;
   }
 
@@ -106,10 +99,10 @@ function renderClubForm(matches) {
   });
 }
 
-// Mise à jour des blocs "prochain" et "dernier" pour une équipe donnée
-function updateTeamBlocks(teamKey, nextMatch, lastMatch) {
-  const nextDiv = document.getElementById(`next-${teamKey}`);
-  const lastDiv = document.getElementById(`last-${teamKey}`);
+// Met à jour la partie "Prochain match" et "Dernier résultat"
+function updateHomePage(nextMatch, lastMatch) {
+  const nextDiv = document.getElementById("next-match");
+  const lastDiv = document.getElementById("last-match");
 
   // Prochain match
   if (nextMatch && nextDiv) {
@@ -138,35 +131,6 @@ function updateTeamBlocks(teamKey, nextMatch, lastMatch) {
   }
 }
 
-// Calcule prochain et dernier match pour une équipe donnée
-function getNextAndLastForTeam(allMatches, teamLabel) {
-  const now = new Date();
-
-  const teamMatches = allMatches.filter((m) => m.team === teamLabel);
-
-  const played = teamMatches.filter(
-    (m) => m.status === "played" && new Date(m.match_date) <= now
-  );
-
-  const scheduled = teamMatches.filter(
-    (m) => m.status === "scheduled" && new Date(m.match_date) >= now
-  );
-
-  let lastMatch = null;
-  if (played.length > 0) {
-    played.sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
-    lastMatch = played[played.length - 1];
-  }
-
-  let nextMatch = null;
-  if (scheduled.length > 0) {
-    scheduled.sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
-    nextMatch = scheduled[0];
-  }
-
-  return { nextMatch, lastMatch };
-}
-
 // Initialisation de la page d'accueil
 async function initHomePage() {
   try {
@@ -177,22 +141,37 @@ async function initHomePage() {
     }
 
     const matches = await response.json();
+    const now = new Date();
 
-    // Première
-    const { nextMatch: nextPrem, lastMatch: lastPrem } = getNextAndLastForTeam(
-      matches,
-      TEAM_PREMIERE
+    // Matchs joués et à venir
+    const played = matches.filter(
+      (m) => m.status === "played" && new Date(m.match_date) <= now
     );
-    updateTeamBlocks("premiere", nextPrem, lastPrem);
 
-    // Réserve
-    const { nextMatch: nextRes, lastMatch: lastRes } = getNextAndLastForTeam(
-      matches,
-      TEAM_RESERVE
+    const scheduled = matches.filter(
+      (m) => m.status === "scheduled" && new Date(m.match_date) >= now
     );
-    updateTeamBlocks("reserve", nextRes, lastRes);
 
-    // Forme de l'équipe Première
+    // Dernier match joué = le plus récent dans le passé
+    let lastMatch = null;
+    if (played.length > 0) {
+      played.sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
+      lastMatch = played[played.length - 1];
+    }
+
+    // Prochain match = le plus proche dans le futur
+    let nextMatch = null;
+    if (scheduled.length > 0) {
+      scheduled.sort(
+        (a, b) => new Date(a.match_date) - new Date(b.match_date)
+      );
+      nextMatch = scheduled[0];
+    }
+
+    // Mise à jour de la page
+    updateHomePage(nextMatch, lastMatch);
+
+    // Forme du BUC sur les 5 derniers matchs
     renderClubForm(matches);
   } catch (error) {
     console.error(error);
@@ -210,31 +189,20 @@ async function initResultsPage() {
     }
 
     const matches = await response.json();
-    renderMatchesTables(matches);
+    renderMatchesTable(matches);
   } catch (error) {
     console.error(error);
     showError("Impossible de charger la liste des matchs.");
   }
 }
 
-// Remplit les deux tableaux (Première et Réserve)
-function renderMatchesTables(matches) {
-  const tbodyPrem = document.getElementById("matches-premiere");
-  const tbodyRes = document.getElementById("matches-reserve");
-  if (!tbodyPrem || !tbodyRes) return;
+// Remplit le tableau des résultats
+function renderMatchesTable(matches) {
+  const tbody = document.getElementById("matches-body");
+  if (!tbody) return;
 
-  tbodyPrem.innerHTML = "";
-  tbodyRes.innerHTML = "";
+  tbody.innerHTML = "";
 
-  const premMatches = matches.filter((m) => m.team === TEAM_PREMIERE);
-  const resMatches = matches.filter((m) => m.team === TEAM_RESERVE);
-
-  fillMatchesTable(tbodyPrem, premMatches);
-  fillMatchesTable(tbodyRes, resMatches);
-}
-
-// Remplit un seul tableau
-function fillMatchesTable(tbody, matches) {
   if (!matches || matches.length === 0) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
