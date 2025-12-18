@@ -1,41 +1,30 @@
-// URL de base de ton API Node/Render
 const API_BASE_URL = "https://apiscore-vv2y.onrender.com";
-
-// Nom du club tel qu'il apparaît dans la base de données
 const CLUB_NAME = "Bidart";
 
-// Valeurs attendues dans la colonne "Equipe" (attention accents)
 const TEAM_PREMIERE = "Première";
 const TEAM_RESERVE = "Réserve";
 
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.body.dataset.page;
 
-  if (page === "home") {
-    initHomePage();
-  } else if (page === "results") {
-    initResultsPage();
-  }
+  if (page === "home") initHomePage();
+  if (page === "results") initResultsPage();
 });
 
-// Affiche une erreur dans un élément <div id="error-message">
 function showError(message) {
   const errorDiv = document.getElementById("error-message");
   if (errorDiv) {
     errorDiv.textContent = message;
     errorDiv.classList.add("error");
-  } else {
-    alert(message);
   }
+  console.error(message);
 }
 
-// Récupère le label d'équipe depuis l'API (clé exacte : "Equipe")
+// clé renvoyée par ton API: "Equipe"
 function getTeamLabel(match) {
-  // On gère aussi des variantes au cas où
   return match.Equipe ?? match.equipe ?? match.team ?? null;
 }
 
-// Formatage de la date au format JJ/MM/AAAA HH:MM
 function formatMatchDate(dateString) {
   const date = new Date(dateString);
   const day = String(date.getDate()).padStart(2, "0");
@@ -46,20 +35,15 @@ function formatMatchDate(dateString) {
   return `${day}/${month}/${year} ${hours}h${minutes}`;
 }
 
-// Renvoie "win", "loss", "draw" ou null pour un match donné du point de vue du BUC
 function getClubResult(match) {
   if (match.status !== "played") return null;
   if (match.home_score == null || match.away_score == null) return null;
 
   const isHome = match.home_team === CLUB_NAME;
   const isAway = match.away_team === CLUB_NAME;
-
-  // Match qui ne concerne pas le club
   if (!isHome && !isAway) return null;
 
   let diff = match.home_score - match.away_score;
-
-  // Si Bidart joue à l'extérieur, on inverse la perspective
   if (isAway) diff = -diff;
 
   if (diff > 0) return "win";
@@ -67,7 +51,13 @@ function getClubResult(match) {
   return "draw";
 }
 
-// Affiche les 5 derniers résultats de l'équipe Première sous forme de pastilles
+async function fetchMatches() {
+  const url = `${API_BASE_URL}/api/matches`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return await res.json();
+}
+
 function renderTeamForm(matches, teamLabel, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -81,16 +71,13 @@ function renderTeamForm(matches, teamLabel, containerId) {
     return;
   }
 
-  // du plus récent au plus ancien
   teamMatches.sort((a, b) => new Date(b.match_date) - new Date(a.match_date));
-
   const lastFive = teamMatches.slice(0, 5);
 
   container.innerHTML = "";
 
   lastFive.forEach((match) => {
     const result = getClubResult(match);
-
     const dot = document.createElement("span");
     dot.classList.add("form-dot", result);
 
@@ -100,53 +87,16 @@ function renderTeamForm(matches, teamLabel, containerId) {
         : "score inconnu";
 
     dot.title = `${formatMatchDate(match.match_date)} : ${match.home_team} ${scoreText} ${match.away_team}`;
-
     container.appendChild(dot);
   });
 }
 
-function renderForms(matches) {
-  renderTeamForm(matches, TEAM_PREMIERE, "form-dots-premiere");
-  renderTeamForm(matches, TEAM_RESERVE, "form-dots-reserve");
-}
-
-
-// Calculer prochain + dernier match pour une équipe donnée
-function getNextAndLastForTeam(allMatches, teamLabel) {
-  const now = new Date();
-
-  const teamMatches = allMatches.filter((m) => getTeamLabel(m) === teamLabel);
-
-  const played = teamMatches.filter(
-    (m) => m.status === "played" && new Date(m.match_date) <= now
-  );
-
-  const scheduled = teamMatches.filter(
-    (m) => m.status === "scheduled" && new Date(m.match_date) >= now
-  );
-
-  let lastMatch = null;
-  if (played.length > 0) {
-    played.sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
-    lastMatch = played[played.length - 1];
-  }
-
-  let nextMatch = null;
-  if (scheduled.length > 0) {
-    scheduled.sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
-    nextMatch = scheduled[0];
-  }
-
-  return { nextMatch, lastMatch };
-}
-
-// Afficher un bloc match dans une div (prochain / dernier)
-function renderMatchBlock(containerId, match, kindLabel) {
+function renderMatchBlock(containerId, match, emptyText) {
   const div = document.getElementById(containerId);
   if (!div) return;
 
   if (!match) {
-    div.innerHTML = `<p>Aucun match ${kindLabel} trouvé.</p>`;
+    div.innerHTML = `<p>${emptyText}</p>`;
     return;
   }
 
@@ -162,53 +112,55 @@ function renderMatchBlock(containerId, match, kindLabel) {
     `<p>Statut : <span class="status-${match.status}">${match.status}</span></p>`;
 }
 
-// Initialisation de la page d'accueil
+function getNextAndLastForTeam(allMatches, teamLabel) {
+  const teamMatches = allMatches.filter((m) => getTeamLabel(m) === teamLabel);
+
+  const played = teamMatches
+    .filter((m) => m.status === "played")
+    .sort((a, b) => new Date(b.match_date) - new Date(a.match_date));
+
+  const scheduled = teamMatches
+    .filter((m) => m.status === "scheduled")
+    .sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
+
+  return {
+    lastMatch: played.length ? played[0] : null,
+    nextMatch: scheduled.length ? scheduled[0] : null,
+  };
+}
+
 async function initHomePage() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/matches`);
+    const matches = await fetchMatches();
 
-    if (!response.ok) {
-      throw new Error(`Erreur API (${response.status})`);
-    }
+    // Forme (2 équipes)
+    renderTeamForm(matches, TEAM_PREMIERE, "form-dots-premiere");
+    renderTeamForm(matches, TEAM_RESERVE, "form-dots-reserve");
 
-    const matches = await response.json();
+    // Prochains / derniers (2 équipes)
+    const prem = getNextAndLastForTeam(matches, TEAM_PREMIERE);
+    renderMatchBlock("next-premiere", prem.nextMatch, "Aucun match à venir trouvé.");
+    renderMatchBlock("last-premiere", prem.lastMatch, "Aucun match joué trouvé.");
 
-    // Première
-    const premiere = getNextAndLastForTeam(matches, TEAM_PREMIERE);
-    renderMatchBlock("next-premiere", premiere.nextMatch, "à venir");
-    renderMatchBlock("last-premiere", premiere.lastMatch, "joué");
-
-    // Réserve
-    const reserve = getNextAndLastForTeam(matches, TEAM_RESERVE);
-    renderMatchBlock("next-reserve", reserve.nextMatch, "à venir");
-    renderMatchBlock("last-reserve", reserve.lastMatch, "joué");
-
-    // Forme (5 derniers matchs Première)
-    renderForms(matches);
-  } catch (error) {
-    console.error(error);
+    const res = getNextAndLastForTeam(matches, TEAM_RESERVE);
+    renderMatchBlock("next-reserve", res.nextMatch, "Aucun match à venir trouvé.");
+    renderMatchBlock("last-reserve", res.lastMatch, "Aucun match joué trouvé.");
+  } catch (e) {
     showError("Impossible de charger les données (API ou réseau indisponible).");
+    console.error(e);
   }
 }
 
-// Initialisation de la page des résultats
 async function initResultsPage() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/matches`);
-
-    if (!response.ok) {
-      throw new Error(`Erreur API (${response.status})`);
-    }
-
-    const matches = await response.json();
+    const matches = await fetchMatches();
     renderMatchesTables(matches);
-  } catch (error) {
-    console.error(error);
+  } catch (e) {
     showError("Impossible de charger la liste des matchs.");
+    console.error(e);
   }
 }
 
-// Remplit les 2 tableaux séparés (Première / Réserve)
 function renderMatchesTables(matches) {
   const tbodyPrem = document.getElementById("matches-premiere");
   const tbodyRes = document.getElementById("matches-reserve");
@@ -221,7 +173,6 @@ function renderMatchesTables(matches) {
   fillMatchesTable(tbodyRes, resMatches);
 }
 
-// Remplit un tableau
 function fillMatchesTable(tbody, matches) {
   tbody.innerHTML = "";
 
@@ -235,7 +186,6 @@ function fillMatchesTable(tbody, matches) {
     return;
   }
 
-  // Tri par date croissante
   matches.sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
 
   matches.forEach((match) => {
@@ -251,11 +201,10 @@ function fillMatchesTable(tbody, matches) {
     awayTd.textContent = match.away_team;
 
     const scoreTd = document.createElement("td");
-    if (match.home_score != null && match.away_score != null) {
-      scoreTd.textContent = `${match.home_score} - ${match.away_score}`;
-    } else {
-      scoreTd.textContent = "—";
-    }
+    scoreTd.textContent =
+      match.home_score != null && match.away_score != null
+        ? `${match.home_score} - ${match.away_score}`
+        : "—";
 
     const statusTd = document.createElement("td");
     statusTd.textContent = match.status;
