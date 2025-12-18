@@ -68,31 +68,28 @@ function getClubResult(match) {
 }
 
 // Affiche les 5 derniers résultats de l'équipe Première sous forme de pastilles
-function renderClubForm(matches) {
-  const container = document.getElementById("form-dots");
+function renderTeamForm(matches, teamLabel, containerId) {
+  const container = document.getElementById(containerId);
   if (!container) return;
 
-  // On garde uniquement les matchs de la Première où Bidart a un résultat exploitable
-  const clubMatches = matches.filter(
-    (m) => getTeamLabel(m) === TEAM_PREMIERE && getClubResult(m) !== null
+  const teamMatches = matches.filter(
+    (m) => getTeamLabel(m) === teamLabel && getClubResult(m) !== null
   );
 
-  if (clubMatches.length === 0) {
-    container.textContent =
-      "Pas encore de résultats pour l'équipe Première du Bidart Union Club.";
+  if (teamMatches.length === 0) {
+    container.textContent = "Pas encore de résultats.";
     return;
   }
 
-  // Tri par date décroissante
-  clubMatches.sort((a, b) => new Date(b.match_date) - new Date(a.match_date));
+  // du plus récent au plus ancien
+  teamMatches.sort((a, b) => new Date(b.match_date) - new Date(a.match_date));
 
-  // 5 derniers
-  const lastFive = clubMatches.slice(0, 5);
+  const lastFive = teamMatches.slice(0, 5);
 
   container.innerHTML = "";
 
   lastFive.forEach((match) => {
-    const result = getClubResult(match); // win / loss / draw
+    const result = getClubResult(match);
 
     const dot = document.createElement("span");
     dot.classList.add("form-dot", result);
@@ -107,6 +104,12 @@ function renderClubForm(matches) {
     container.appendChild(dot);
   });
 }
+
+function renderForms(matches) {
+  renderTeamForm(matches, TEAM_PREMIERE, "form-dots-premiere");
+  renderTeamForm(matches, TEAM_RESERVE, "form-dots-reserve");
+}
+
 
 // Calculer prochain + dernier match pour une équipe donnée
 function getNextAndLastForTeam(allMatches, teamLabel) {
@@ -181,7 +184,7 @@ async function initHomePage() {
     renderMatchBlock("last-reserve", reserve.lastMatch, "joué");
 
     // Forme (5 derniers matchs Première)
-    renderClubForm(matches);
+    renderForms(matches);
   } catch (error) {
     console.error(error);
     showError("Impossible de charger les données (API ou réseau indisponible).");

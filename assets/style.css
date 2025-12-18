@@ -200,4 +200,19 @@ body {
   .form-legend .form-dot {
     margin-right: 4px;
   }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  
+  .col h3 {
+    margin-top: 0;
+  }
+  
+  @media (max-width: 800px) {
+    .grid-2 {
+      grid-template-columns: 1fr;
+    }
+  }
   
