@@ -4,6 +4,10 @@ const API_BASE_URL = "https://apiscore-vv2y.onrender.com";
 // Nom du club tel qu'il apparaît dans la base de données
 const CLUB_NAME = "Bidart";
 
+// Valeurs attendues dans la colonne "Equipe" (attention accents)
+const TEAM_PREMIERE = "Première";
+const TEAM_RESERVE = "Réserve";
+
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.body.dataset.page;
 
@@ -23,6 +27,12 @@ function showError(message) {
   } else {
     alert(message);
   }
+}
+
+// Récupère le label d'équipe depuis l'API (clé exacte : "Equipe")
+function getTeamLabel(match) {
+  // On gère aussi des variantes au cas où
+  return match.Equipe ?? match.equipe ?? match.team ?? null;
 }
 
 // Formatage de la date au format JJ/MM/AAAA HH:MM
@@ -50,40 +60,39 @@ function getClubResult(match) {
   let diff = match.home_score - match.away_score;
 
   // Si Bidart joue à l'extérieur, on inverse la perspective
-  if (isAway) {
-    diff = -diff;
-  }
+  if (isAway) diff = -diff;
 
   if (diff > 0) return "win";
   if (diff < 0) return "loss";
   return "draw";
 }
 
-// Affiche les 5 derniers résultats du club sous forme de pastilles
+// Affiche les 5 derniers résultats de l'équipe Première sous forme de pastilles
 function renderClubForm(matches) {
   const container = document.getElementById("form-dots");
   if (!container) return;
 
-  // On garde uniquement les matchs du club avec un résultat connu
-  const clubMatches = matches.filter((m) => getClubResult(m) !== null);
+  // On garde uniquement les matchs de la Première où Bidart a un résultat exploitable
+  const clubMatches = matches.filter(
+    (m) => getTeamLabel(m) === TEAM_PREMIERE && getClubResult(m) !== null
+  );
 
   if (clubMatches.length === 0) {
-    container.textContent = "Pas encore de résultats pour le Bidart Union Club.";
+    container.textContent =
+      "Pas encore de résultats pour l'équipe Première du Bidart Union Club.";
     return;
   }
 
-  // Tri par date décroissante (du plus récent au plus ancien)
-  clubMatches.sort(
-    (a, b) => new Date(b.match_date) - new Date(a.match_date)
-  );
+  // Tri par date décroissante
+  clubMatches.sort((a, b) => new Date(b.match_date) - new Date(a.match_date));
 
-  // On conserve les 5 derniers
+  // 5 derniers
   const lastFive = clubMatches.slice(0, 5);
 
   container.innerHTML = "";
 
   lastFive.forEach((match) => {
-    const result = getClubResult(match); // "win" / "loss" / "draw"
+    const result = getClubResult(match); // win / loss / draw
 
     const dot = document.createElement("span");
     dot.classList.add("form-dot", result);
@@ -99,36 +108,55 @@ function renderClubForm(matches) {
   });
 }
 
-// Met à jour la partie "Prochain match" et "Dernier résultat"
-function updateHomePage(nextMatch, lastMatch) {
-  const nextDiv = document.getElementById("next-match");
-  const lastDiv = document.getElementById("last-match");
+// Calculer prochain + dernier match pour une équipe donnée
+function getNextAndLastForTeam(allMatches, teamLabel) {
+  const now = new Date();
 
-  // Prochain match
-  if (nextMatch && nextDiv) {
-    nextDiv.innerHTML =
-      `<p><strong>${nextMatch.home_team}</strong> vs <strong>${nextMatch.away_team}</strong></p>` +
-      `<p>Date : ${formatMatchDate(nextMatch.match_date)}</p>` +
-      `<p>Statut : <span class="status-${nextMatch.status}">${nextMatch.status}</span></p>`;
-  } else if (nextDiv) {
-    nextDiv.innerHTML = "<p>Aucun match à venir trouvé.</p>";
+  const teamMatches = allMatches.filter((m) => getTeamLabel(m) === teamLabel);
+
+  const played = teamMatches.filter(
+    (m) => m.status === "played" && new Date(m.match_date) <= now
+  );
+
+  const scheduled = teamMatches.filter(
+    (m) => m.status === "scheduled" && new Date(m.match_date) >= now
+  );
+
+  let lastMatch = null;
+  if (played.length > 0) {
+    played.sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
+    lastMatch = played[played.length - 1];
   }
 
-  // Dernier match
-  if (lastMatch && lastDiv) {
-    let score = "Score non renseigné";
-    if (lastMatch.home_score != null && lastMatch.away_score != null) {
-      score = `${lastMatch.home_score} - ${lastMatch.away_score}`;
-    }
-
-    lastDiv.innerHTML =
-      `<p><strong>${lastMatch.home_team}</strong> vs <strong>${lastMatch.away_team}</strong></p>` +
-      `<p>Date : ${formatMatchDate(lastMatch.match_date)}</p>` +
-      `<p>Score : ${score}</p>` +
-      `<p>Statut : <span class="status-${lastMatch.status}">${lastMatch.status}</span></p>`;
-  } else if (lastDiv) {
-    lastDiv.innerHTML = "<p>Aucun match joué trouvé.</p>";
+  let nextMatch = null;
+  if (scheduled.length > 0) {
+    scheduled.sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
+    nextMatch = scheduled[0];
   }
+
+  return { nextMatch, lastMatch };
+}
+
+// Afficher un bloc match dans une div (prochain / dernier)
+function renderMatchBlock(containerId, match, kindLabel) {
+  const div = document.getElementById(containerId);
+  if (!div) return;
+
+  if (!match) {
+    div.innerHTML = `<p>Aucun match ${kindLabel} trouvé.</p>`;
+    return;
+  }
+
+  let scoreLine = "";
+  if (match.home_score != null && match.away_score != null) {
+    scoreLine = `<p>Score : ${match.home_score} - ${match.away_score}</p>`;
+  }
+
+  div.innerHTML =
+    `<p><strong>${match.home_team}</strong> vs <strong>${match.away_team}</strong></p>` +
+    `<p>Date : ${formatMatchDate(match.match_date)}</p>` +
+    scoreLine +
+    `<p>Statut : <span class="status-${match.status}">${match.status}</span></p>`;
 }
 
 // Initialisation de la page d'accueil
@@ -141,37 +169,18 @@ async function initHomePage() {
     }
 
     const matches = await response.json();
-    const now = new Date();
 
-    // Matchs joués et à venir
-    const played = matches.filter(
-      (m) => m.status === "played" && new Date(m.match_date) <= now
-    );
+    // Première
+    const premiere = getNextAndLastForTeam(matches, TEAM_PREMIERE);
+    renderMatchBlock("next-premiere", premiere.nextMatch, "à venir");
+    renderMatchBlock("last-premiere", premiere.lastMatch, "joué");
 
-    const scheduled = matches.filter(
-      (m) => m.status === "scheduled" && new Date(m.match_date) >= now
-    );
+    // Réserve
+    const reserve = getNextAndLastForTeam(matches, TEAM_RESERVE);
+    renderMatchBlock("next-reserve", reserve.nextMatch, "à venir");
+    renderMatchBlock("last-reserve", reserve.lastMatch, "joué");
 
-    // Dernier match joué = le plus récent dans le passé
-    let lastMatch = null;
-    if (played.length > 0) {
-      played.sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
-      lastMatch = played[played.length - 1];
-    }
-
-    // Prochain match = le plus proche dans le futur
-    let nextMatch = null;
-    if (scheduled.length > 0) {
-      scheduled.sort(
-        (a, b) => new Date(a.match_date) - new Date(b.match_date)
-      );
-      nextMatch = scheduled[0];
-    }
-
-    // Mise à jour de la page
-    updateHomePage(nextMatch, lastMatch);
-
-    // Forme du BUC sur les 5 derniers matchs
+    // Forme (5 derniers matchs Première)
     renderClubForm(matches);
   } catch (error) {
     console.error(error);
@@ -189,18 +198,28 @@ async function initResultsPage() {
     }
 
     const matches = await response.json();
-    renderMatchesTable(matches);
+    renderMatchesTables(matches);
   } catch (error) {
     console.error(error);
     showError("Impossible de charger la liste des matchs.");
   }
 }
 
-// Remplit le tableau des résultats
-function renderMatchesTable(matches) {
-  const tbody = document.getElementById("matches-body");
-  if (!tbody) return;
+// Remplit les 2 tableaux séparés (Première / Réserve)
+function renderMatchesTables(matches) {
+  const tbodyPrem = document.getElementById("matches-premiere");
+  const tbodyRes = document.getElementById("matches-reserve");
+  if (!tbodyPrem || !tbodyRes) return;
 
+  const premMatches = matches.filter((m) => getTeamLabel(m) === TEAM_PREMIERE);
+  const resMatches = matches.filter((m) => getTeamLabel(m) === TEAM_RESERVE);
+
+  fillMatchesTable(tbodyPrem, premMatches);
+  fillMatchesTable(tbodyRes, resMatches);
+}
+
+// Remplit un tableau
+function fillMatchesTable(tbody, matches) {
   tbody.innerHTML = "";
 
   if (!matches || matches.length === 0) {
