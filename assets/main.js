@@ -4,7 +4,7 @@
 const API_BASE_URL = "https://apiscore-vv2y.onrender.com";
 const CLUB_NAME = "Bidart";
 
-// On travaille avec des labels normalisés (sans accent / minuscules)
+// Labels internes normalisés
 const TEAM_PREMIERE = "premiere";
 const TEAM_RESERVE = "reserve";
 
@@ -32,8 +32,19 @@ function showError(message) {
 // ==============================
 // HELPERS
 // ==============================
+function normalizeText(s) {
+  if (s == null) return null;
+  return String(s)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function formatMatchDate(dateString) {
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return String(dateString); // fallback
+
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = date.getFullYear();
@@ -42,39 +53,44 @@ function formatMatchDate(dateString) {
   return `${day}/${month}/${year} ${hours}h${minutes}`;
 }
 
-function normalizeText(s) {
-  if (s == null) return null;
-  return String(s)
-    .trim()
-    .toLowerCase()
-    .normalize("NFD") // enlève les accents
-    .replace(/[\u0300-\u036f]/g, "");
+// équipe renvoyée par l'API : "Equipe" (mais on gère plusieurs variantes)
+function getTeamLabel(match) {
+  const raw =
+    match.Equipe ??
+    match.equipe ??
+    match.team ??
+    match.Team ??
+    match.TEAM ??
+    null;
+
+  const v = normalizeText(raw);
+  if (!v) return null;
+
+  // variantes acceptées
+  if (v === "premiere" || v === "premiere equipe" || v.includes("prem") || v === "1" || v.includes("equipe 1"))
+    return TEAM_PREMIERE;
+
+  if (v === "reserve" || v === "equipe reserve" || v.includes("res") || v === "2" || v.includes("equipe 2"))
+    return TEAM_RESERVE;
+
+  return v; // fallback (au cas où)
 }
 
-// Renvoie "premiere" / "reserve" de manière robuste
-function normalizeText(s) {
-      if (s == null) return null;
-      return String(s).trim().toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    }
-
-    function getTeamLabel(match) {
-      const raw = match.Equipe ?? match.equipe ?? match.team ?? match.Team ?? null;
-      const v = normalizeText(raw);
-      if (!v) return null;
-      if (v.includes("prem")) return "premiere";
-      if (v.includes("res")) return "reserve";
-      return v;
+function getStatus(match) {
+  return normalizeText(match.status);
 }
 
+function isClub(name) {
+  return normalizeText(name) === normalizeText(CLUB_NAME);
+}
 
 // "win" / "loss" / "draw" ou null si pas un match joué du point de vue de Bidart
 function getClubResult(match) {
-  if (match.status !== "played") return null;
+  if (getStatus(match) !== "played") return null;
   if (match.home_score == null || match.away_score == null) return null;
 
-  const isHome = match.home_team === CLUB_NAME;
-  const isAway = match.away_team === CLUB_NAME;
+  const isHome = isClub(match.home_team);
+  const isAway = isClub(match.away_team);
   if (!isHome && !isAway) return null;
 
   let diff = match.home_score - match.away_score;
@@ -96,7 +112,6 @@ async function fetchMatches() {
 
   const data = await res.json();
 
-  // sécurité : on veut un tableau
   if (!Array.isArray(data)) {
     const msg = data?.error ? data.error : "Réponse API invalide (pas une liste).";
     throw new Error(msg);
@@ -112,7 +127,6 @@ function renderTeamForm(matches, teamLabel, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  // on nettoie le "Chargement..."
   container.innerHTML = "";
 
   const teamMatches = matches.filter(
@@ -146,35 +160,58 @@ function renderMatchBlock(containerId, match, emptyText) {
   const div = document.getElementById(containerId);
   if (!div) return;
 
+  div.innerHTML = "";
+
   if (!match) {
-    div.innerHTML = `<p>${emptyText}</p>`;
+    const p = document.createElement("p");
+    p.textContent = emptyText;
+    div.appendChild(p);
     return;
   }
 
-  let scoreLine = "";
+  const pTeams = document.createElement("p");
+  const strongHome = document.createElement("strong");
+  strongHome.textContent = match.home_team ?? "—";
+  const strongAway = document.createElement("strong");
+  strongAway.textContent = match.away_team ?? "—";
+  pTeams.append(strongHome, " vs ", strongAway);
+
+  const pDate = document.createElement("p");
+  pDate.textContent = `Date : ${formatMatchDate(match.match_date)}`;
+
+  div.append(pTeams, pDate);
+
   if (match.home_score != null && match.away_score != null) {
-    scoreLine = `<p>Score : ${match.home_score} - ${match.away_score}</p>`;
+    const pScore = document.createElement("p");
+    pScore.textContent = `Score : ${match.home_score} - ${match.away_score}`;
+    div.appendChild(pScore);
   }
 
-  const notesLine = match.notes ? `<p class="match-notes">${match.notes}</p>` : "";
+  const pStatus = document.createElement("p");
+  const span = document.createElement("span");
+  const st = getStatus(match) || "unknown";
+  span.textContent = String(match.status ?? "—");
+  span.classList.add(`status-${st}`);
+  pStatus.append("Statut : ", span);
+  div.appendChild(pStatus);
 
-  div.innerHTML =
-    `<p><strong>${match.home_team}</strong> vs <strong>${match.away_team}</strong></p>` +
-    `<p>Date : ${formatMatchDate(match.match_date)}</p>` +
-    scoreLine +
-    `<p>Statut : <span class="status-${match.status}">${match.status}</span></p>` +
-    notesLine;
+  if (match.notes) {
+    const pNotes = document.createElement("p");
+    pNotes.classList.add("match-notes");
+    pNotes.textContent = String(match.notes);
+    div.appendChild(pNotes);
+  }
 }
 
 function getNextAndLastForTeam(allMatches, teamLabel) {
   const teamMatches = allMatches.filter((m) => getTeamLabel(m) === teamLabel);
 
   const played = teamMatches
-    .filter((m) => m.status === "played")
+    .filter((m) => getStatus(m) === "played")
     .sort((a, b) => new Date(b.match_date) - new Date(a.match_date));
 
   const scheduled = teamMatches
-    .filter((m) => m.status === "scheduled")
+    .filter((m) => getStatus(m) === "scheduled")
     .sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
 
   return {
@@ -252,10 +289,10 @@ function fillMatchesTable(tbody, matches) {
     dateTd.textContent = formatMatchDate(match.match_date);
 
     const homeTd = document.createElement("td");
-    homeTd.textContent = match.home_team;
+    homeTd.textContent = match.home_team ?? "—";
 
     const awayTd = document.createElement("td");
-    awayTd.textContent = match.away_team;
+    awayTd.textContent = match.away_team ?? "—";
 
     const scoreTd = document.createElement("td");
     scoreTd.textContent =
@@ -264,11 +301,12 @@ function fillMatchesTable(tbody, matches) {
         : "—";
 
     const statusTd = document.createElement("td");
-    statusTd.textContent = match.status;
-    statusTd.classList.add(`status-${match.status}`);
+    const st = getStatus(match) || "unknown";
+    statusTd.textContent = match.status ?? "—";
+    statusTd.classList.add(`status-${st}`);
 
     const notesTd = document.createElement("td");
-    notesTd.textContent = match.notes ? match.notes : "—";
+    notesTd.textContent = match.notes ? String(match.notes) : "—";
     notesTd.classList.add("notes-cell");
 
     tr.appendChild(dateTd);
