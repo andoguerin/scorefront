@@ -43,7 +43,7 @@ function normalizeText(s) {
 
 function formatMatchDate(dateString) {
   const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return String(dateString); // fallback
+  if (Number.isNaN(date.getTime())) return String(dateString);
 
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -53,7 +53,7 @@ function formatMatchDate(dateString) {
   return `${day}/${month}/${year} ${hours}h${minutes}`;
 }
 
-// équipe renvoyée par l'API : "Equipe" (mais on gère plusieurs variantes)
+// équipe renvoyée par l'API : "Equipe"
 function getTeamLabel(match) {
   const raw =
     match.Equipe ??
@@ -66,14 +66,10 @@ function getTeamLabel(match) {
   const v = normalizeText(raw);
   if (!v) return null;
 
-  // variantes acceptées
-  if (v === "premiere" || v === "premiere equipe" || v.includes("prem") || v === "1" || v.includes("equipe 1"))
-    return TEAM_PREMIERE;
+  if (v.includes("prem")) return TEAM_PREMIERE; // "premiere", "première", etc.
+  if (v.includes("res")) return TEAM_RESERVE;   // "reserve", "réserve", etc.
 
-  if (v === "reserve" || v === "equipe reserve" || v.includes("res") || v === "2" || v.includes("equipe 2"))
-    return TEAM_RESERVE;
-
-  return v; // fallback (au cas où)
+  return v;
 }
 
 function getStatus(match) {
@@ -142,7 +138,7 @@ function renderTeamForm(matches, teamLabel, containerId) {
   const lastFive = teamMatches.slice(0, 5);
 
   lastFive.forEach((match) => {
-    const result = getClubResult(match); // win/loss/draw
+    const result = getClubResult(match);
     const dot = document.createElement("span");
     dot.classList.add("form-dot", result);
 
@@ -224,11 +220,9 @@ async function initHomePage() {
   try {
     const matches = await fetchMatches();
 
-    // Forme (2 équipes)
     renderTeamForm(matches, TEAM_PREMIERE, "form-dots-premiere");
     renderTeamForm(matches, TEAM_RESERVE, "form-dots-reserve");
 
-    // Prochain / dernier (2 équipes)
     const prem = getNextAndLastForTeam(matches, TEAM_PREMIERE);
     renderMatchBlock("next-premiere", prem.nextMatch, "Aucun match à venir trouvé.");
     renderMatchBlock("last-premiere", prem.lastMatch, "Aucun match joué trouvé.");
