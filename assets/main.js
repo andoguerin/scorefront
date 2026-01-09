@@ -1,9 +1,16 @@
+// ==============================
+// CONFIG
+// ==============================
 const API_BASE_URL = "https://apiscore-vv2y.onrender.com";
 const CLUB_NAME = "Bidart";
 
-const TEAM_PREMIERE = "Première";
-const TEAM_RESERVE = "Réserve";
+// On travaille avec des labels normalisés (sans accent / minuscules)
+const TEAM_PREMIERE = "premiere";
+const TEAM_RESERVE = "reserve";
 
+// ==============================
+// INIT
+// ==============================
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.body.dataset.page;
 
@@ -16,15 +23,15 @@ function showError(message) {
   if (errorDiv) {
     errorDiv.textContent = message;
     errorDiv.classList.add("error");
+  } else {
+    alert(message);
   }
   console.error(message);
 }
 
-// clé renvoyée par ton API: "Equipe"
-function getTeamLabel(match) {
-  return match.Equipe ?? match.equipe ?? match.team ?? null;
-}
-
+// ==============================
+// HELPERS
+// ==============================
 function formatMatchDate(dateString) {
   const date = new Date(dateString);
   const day = String(date.getDate()).padStart(2, "0");
@@ -35,6 +42,38 @@ function formatMatchDate(dateString) {
   return `${day}/${month}/${year} ${hours}h${minutes}`;
 }
 
+function normalizeText(s) {
+  if (s == null) return null;
+  return String(s)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD") // enlève les accents
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+// Renvoie "premiere" / "reserve" de manière robuste
+function getTeamLabel(match) {
+  const raw =
+    match.Equipe ??
+    match.equipe ??
+    match.team ??
+    match.Team ??
+    match.TEAM ??
+    null;
+
+  const v = normalizeText(raw);
+
+  if (!v) return null;
+
+  // variantes acceptées
+  if (v === "premiere" || v === "1" || v.includes("prem")) return TEAM_PREMIERE;
+  if (v === "reserve" || v === "2" || v.includes("res")) return TEAM_RESERVE;
+
+  // fallback
+  return v;
+}
+
+// "win" / "loss" / "draw" ou null si pas un match joué du point de vue de Bidart
 function getClubResult(match) {
   if (match.status !== "played") return null;
   if (match.home_score == null || match.away_score == null) return null;
@@ -51,16 +90,35 @@ function getClubResult(match) {
   return "draw";
 }
 
+// ==============================
+// FETCH (avec garde-fous)
+// ==============================
 async function fetchMatches() {
   const url = `${API_BASE_URL}/api/matches`;
+
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
-  return await res.json();
+
+  const data = await res.json();
+
+  // sécurité : on veut un tableau
+  if (!Array.isArray(data)) {
+    const msg = data?.error ? data.error : "Réponse API invalide (pas une liste).";
+    throw new Error(msg);
+  }
+
+  return data;
 }
 
+// ==============================
+// RENDER - HOME
+// ==============================
 function renderTeamForm(matches, teamLabel, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
+
+  // on nettoie le "Chargement..."
+  container.innerHTML = "";
 
   const teamMatches = matches.filter(
     (m) => getTeamLabel(m) === teamLabel && getClubResult(m) !== null
@@ -74,10 +132,8 @@ function renderTeamForm(matches, teamLabel, containerId) {
   teamMatches.sort((a, b) => new Date(b.match_date) - new Date(a.match_date));
   const lastFive = teamMatches.slice(0, 5);
 
-  container.innerHTML = "";
-
   lastFive.forEach((match) => {
-    const result = getClubResult(match);
+    const result = getClubResult(match); // win/loss/draw
     const dot = document.createElement("span");
     dot.classList.add("form-dot", result);
 
@@ -140,7 +196,7 @@ async function initHomePage() {
     renderTeamForm(matches, TEAM_PREMIERE, "form-dots-premiere");
     renderTeamForm(matches, TEAM_RESERVE, "form-dots-reserve");
 
-    // Prochains / derniers (2 équipes)
+    // Prochain / dernier (2 équipes)
     const prem = getNextAndLastForTeam(matches, TEAM_PREMIERE);
     renderMatchBlock("next-premiere", prem.nextMatch, "Aucun match à venir trouvé.");
     renderMatchBlock("last-premiere", prem.lastMatch, "Aucun match joué trouvé.");
@@ -154,6 +210,9 @@ async function initHomePage() {
   }
 }
 
+// ==============================
+// RENDER - RESULTS
+// ==============================
 async function initResultsPage() {
   try {
     const matches = await fetchMatches();
@@ -182,7 +241,7 @@ function fillMatchesTable(tbody, matches) {
   if (!matches || matches.length === 0) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 6; // 👈 maintenant 6 colonnes avec Notes
+    td.colSpan = 6; // Date, Dom, Ext, Score, Statut, Notes
     td.textContent = "Aucun match trouvé dans la base.";
     tr.appendChild(td);
     tbody.appendChild(tr);
