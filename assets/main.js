@@ -105,11 +105,14 @@ function renderMatchBlock(containerId, match, emptyText) {
     scoreLine = `<p>Score : ${match.home_score} - ${match.away_score}</p>`;
   }
 
+  const notesLine = match.notes ? `<p class="match-notes">${match.notes}</p>` : "";
+
   div.innerHTML =
     `<p><strong>${match.home_team}</strong> vs <strong>${match.away_team}</strong></p>` +
     `<p>Date : ${formatMatchDate(match.match_date)}</p>` +
     scoreLine +
-    `<p>Statut : <span class="status-${match.status}">${match.status}</span></p>`;
+    `<p>Statut : <span class="status-${match.status}">${match.status}</span></p>` +
+    notesLine;
 }
 
 function getNextAndLastForTeam(allMatches, teamLabel) {
@@ -179,7 +182,7 @@ function fillMatchesTable(tbody, matches) {
   if (!matches || matches.length === 0) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 5;
+    td.colSpan = 6; // 👈 maintenant 6 colonnes avec Notes
     td.textContent = "Aucun match trouvé dans la base.";
     tr.appendChild(td);
     tbody.appendChild(tr);
@@ -210,11 +213,16 @@ function fillMatchesTable(tbody, matches) {
     statusTd.textContent = match.status;
     statusTd.classList.add(`status-${match.status}`);
 
+    const notesTd = document.createElement("td");
+    notesTd.textContent = match.notes ? match.notes : "—";
+    notesTd.classList.add("notes-cell");
+
     tr.appendChild(dateTd);
     tr.appendChild(homeTd);
     tr.appendChild(awayTd);
     tr.appendChild(scoreTd);
     tr.appendChild(statusTd);
+    tr.appendChild(notesTd);
 
     tbody.appendChild(tr);
   });

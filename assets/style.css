@@ -215,4 +215,39 @@ body {
       grid-template-columns: 1fr;
     }
   }
-  
+  /* Header avec logo */
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #1e88e5;
+  color: white;
+  padding: 16px 24px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  height: 48px;
+  width: auto;
+}
+
+.site-header h1 {
+  margin: 0;
+}
+
+/* Notes */
+.match-notes {
+  margin-top: 6px;
+  font-style: italic;
+  opacity: 0.85;
+}
+
+.notes-cell {
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
