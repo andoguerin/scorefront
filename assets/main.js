@@ -267,7 +267,7 @@ function fillMatchesTable(tbody, matches) {
   if (!matches || matches.length === 0) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 6; // Date, Dom, Ext, Score, Statut, Notes
+    td.colSpan = 6; // +1 pour notes
     td.textContent = "Aucun match trouvé dans la base.";
     tr.appendChild(td);
     tbody.appendChild(tr);
@@ -283,10 +283,10 @@ function fillMatchesTable(tbody, matches) {
     dateTd.textContent = formatMatchDate(match.match_date);
 
     const homeTd = document.createElement("td");
-    homeTd.textContent = match.home_team ?? "—";
+    homeTd.textContent = match.home_team;
 
     const awayTd = document.createElement("td");
-    awayTd.textContent = match.away_team ?? "—";
+    awayTd.textContent = match.away_team;
 
     const scoreTd = document.createElement("td");
     scoreTd.textContent =
@@ -295,12 +295,12 @@ function fillMatchesTable(tbody, matches) {
         : "—";
 
     const statusTd = document.createElement("td");
-    const st = getStatus(match) || "unknown";
-    statusTd.textContent = match.status ?? "—";
-    statusTd.classList.add(`status-${st}`);
+    statusTd.textContent = match.status;
+    statusTd.classList.add(`status-${match.status}`);
 
+    // 🔥 NOUVELLE COLONNE NOTES
     const notesTd = document.createElement("td");
-    notesTd.textContent = match.notes ? String(match.notes) : "—";
+    notesTd.textContent = match.notes ? match.notes : "—";
     notesTd.classList.add("notes-cell");
 
     tr.appendChild(dateTd);
@@ -313,3 +313,4 @@ function fillMatchesTable(tbody, matches) {
     tbody.appendChild(tr);
   });
 }
+
