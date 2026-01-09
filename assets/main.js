@@ -52,26 +52,21 @@ function normalizeText(s) {
 }
 
 // Renvoie "premiere" / "reserve" de manière robuste
-function getTeamLabel(match) {
-  const raw =
-    match.Equipe ??
-    match.equipe ??
-    match.team ??
-    match.Team ??
-    match.TEAM ??
-    null;
+function normalizeText(s) {
+      if (s == null) return null;
+      return String(s).trim().toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
 
-  const v = normalizeText(raw);
-
-  if (!v) return null;
-
-  // variantes acceptées
-  if (v === "premiere" || v === "1" || v.includes("prem")) return TEAM_PREMIERE;
-  if (v === "reserve" || v === "2" || v.includes("res")) return TEAM_RESERVE;
-
-  // fallback
-  return v;
+    function getTeamLabel(match) {
+      const raw = match.Equipe ?? match.equipe ?? match.team ?? match.Team ?? null;
+      const v = normalizeText(raw);
+      if (!v) return null;
+      if (v.includes("prem")) return "premiere";
+      if (v.includes("res")) return "reserve";
+      return v;
 }
+
 
 // "win" / "loss" / "draw" ou null si pas un match joué du point de vue de Bidart
 function getClubResult(match) {
